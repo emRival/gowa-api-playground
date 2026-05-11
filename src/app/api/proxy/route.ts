@@ -1,6 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 
+// SSRF Protection: Block sensitive internal IP ranges and metadata endpoints
+function isUrlSafe(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    
+    const host = url.hostname.toLowerCase();
+    
+    // 1. Block known Cloud Provider Metadata endpoints
+    const BLOCKED_HOSTS = [
+      "169.254.169.254", // AWS / Google Cloud / Azure metadata
+      "metadata.google.internal", 
+      "100.100.100.200", // Alibaba Cloud
+      "instance-data",
+    ];
+    
+    if (BLOCKED_HOSTS.includes(host)) return false;
+
+    // 2. Block internal loopbacks in production to prevent accessing Vercel/Server internal ports
+    if (process.env.NODE_ENV === "production") {
+      if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1") {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Allowed MIME types for file uploads
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -85,6 +116,7 @@ async function fetchMediaAsBlob(urlOrBase64: string): Promise<{ blob: Blob; file
       const blob = new Blob([buffer], { type: mimeType });
       return { blob, filename: `upload-${Date.now()}${ext}` };
     } else if (urlOrBase64.startsWith("http")) {
+      if (!isUrlSafe(urlOrBase64)) return null;
       const res = await fetch(urlOrBase64, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -136,6 +168,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!isUrlSafe(targetUrl)) {
+      return NextResponse.json(
+        { error: "Invalid or unsafe Target URL specified." },
+        { status: 400 }
+      );
+    }
+
     // Build headers
     const headers: Record<string, string> = {};
     if (authHeader) headers["Authorization"] = authHeader;
@@ -170,7 +209,8 @@ export async function POST(req: NextRequest) {
       for (const [key, value] of formData.entries()) {
         if (key.startsWith("__proxy_")) continue;
         if (typeof value === "string") {
-          url.searchParams.set(key, value);
+          const safeVal = value.length > 65536 ? value.substring(0, 65536) : value;
+          url.searchParams.set(key, safeVal);
         }
       }
       response = await fetch(url.toString(), { method: "GET", headers });
@@ -182,7 +222,8 @@ export async function POST(req: NextRequest) {
           if (key.startsWith("__proxy_")) continue;
           if (key === upgradeKey) continue;
           if (typeof value === "string") {
-            outForm.append(key, value);
+            const safeVal = value.length > 65536 ? value.substring(0, 65536) : value;
+            outForm.append(key, safeVal);
           }
         }
 
@@ -214,10 +255,11 @@ export async function POST(req: NextRequest) {
       for (const [key, value] of formData.entries()) {
         if (key.startsWith("__proxy_")) continue;
         if (typeof value === "string") {
+          const safeVal = value.length > 65536 ? value.substring(0, 65536) : value;
           // Try parsing booleans
-          if (value === "true") jsonBody[key] = true;
-          else if (value === "false") jsonBody[key] = false;
-          else jsonBody[key] = value;
+          if (safeVal === "true") jsonBody[key] = true;
+          else if (safeVal === "false") jsonBody[key] = false;
+          else jsonBody[key] = safeVal;
         }
       }
       headers["Content-Type"] = "application/json";
@@ -245,7 +287,9 @@ export async function POST(req: NextRequest) {
           // Pass through directly, no memory creation needed
           outForm.append(key, value, value.name);
         } else if (typeof value === "string") {
-          outForm.append(key, value);
+          // Input sanitization: Enforce max string length to protect server memory
+          const safeVal = value.length > 65536 ? value.substring(0, 65536) : value;
+          outForm.append(key, safeVal);
         }
       }
 
