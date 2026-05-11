@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000"
+  ),
   title: "GoWA API Playground — GOWA API Interactive Client",
   description:
     "An elegant, secure, and fully interactive playground for GOWA (Go WhatsApp REST API). Explore endpoints, send messages, generate payloads, and test integrations securely.",
