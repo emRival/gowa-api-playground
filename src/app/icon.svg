@@ -1,0 +1,46 @@
+<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg_gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A" />
+      <stop offset="1" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="mesh_glow" x1="120" y1="120" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="50%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#0EA5E9" />
+    </linearGradient>
+    <filter id="fluid_blur" x="0" y="0" width="512" height="512" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="40" result="blur" />
+    </filter>
+    <filter id="crisp_shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Base Layer -->
+  <rect width="512" height="512" rx="128" fill="url(#bg_gradient)"/>
+
+  <!-- Ambient Light Effects -->
+  <g opacity="0.3" filter="url(#fluid_blur)">
+    <circle cx="200" cy="200" r="120" fill="#10B981" />
+    <circle cx="320" cy="320" r="120" fill="#0EA5E9" />
+  </g>
+
+  <!-- Main Premium Identity Structure (Stylized Infinite G) -->
+  <g transform="translate(0, 0)" filter="url(#crisp_shadow)">
+    <!-- Back abstract wing -->
+    <path d="M350 160 C390 160, 420 190, 420 230 L420 350 C420 390, 390 420, 350 420 L230 420 C190 420, 160 390, 160 350" 
+          stroke="#1E293B" stroke-width="48" stroke-linecap="round" fill="none"/>
+    
+    <!-- Front Glow Structure -->
+    <path d="M280 120 C210 120, 120 180, 120 280 C120 380, 210 400, 280 400 L340 400 C380 400, 400 380, 400 340 L400 280 L280 280" 
+          stroke="url(#mesh_glow)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <!-- Inner Connection Sphere (Represents API connection) -->
+    <circle cx="280" cy="280" r="26" fill="#FFFFFF" />
+    <circle cx="280" cy="280" r="18" fill="url(#mesh_glow)" />
+    
+    <!-- Spark detail -->
+    <path d="M400 280 L440 280" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" />
+  </g>
+</svg>
